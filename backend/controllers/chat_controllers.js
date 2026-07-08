@@ -86,7 +86,7 @@ const handleChat = (req, res) => {
             }
 
             // Validasi: Pastikan ada minimal 1 keyword yang cocok sebelum mengirim respons sukses
-            if (jawabanDitemukan && maxMatchCount > 0) {
+            if (jawabanDitemukan && maxMatchCount > 1.5) {
                 return res.json({ status: 'success', data: { jawaban: jawabanDitemukan } });
             } else {
                 return res.json({ 
