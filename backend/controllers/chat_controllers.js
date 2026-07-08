@@ -2,9 +2,12 @@ const db = require('../config/database');
 
 // Menampilkan rekomendasi pertanyaan
 const getRecommendations = (req, res) => {
+    console.log("=> Yay! Endpoint /recommendations berhasil dipanggil!");
     const sql = 'SELECT id, pertanyaan FROM faq';
     
     db.query(sql, (err, results) => {
+        console.log("=> Query database selesai dijalankan!");
+
         if (err) {
             console.error('Error saat mengambil data FAQ:', err);
             return res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server' });
@@ -24,6 +27,7 @@ const handleChat = (req, res) => {
     if (id) {
         const sqlById = 'SELECT jawaban FROM faq WHERE id = ?';
         db.query(sqlById, [id], (err, results) => {
+            console.log("=> Query database selesai dijalankan!");
             if (err) return res.status(500).json({ status: 'error', message: err.message });
             
             if (results.length > 0) {
