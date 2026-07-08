@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const stringSimilarity = require('string-similarity');
 
 // Menampilkan rekomendasi pertanyaan
 const getRecommendations = (req, res) => {
@@ -37,6 +38,7 @@ const handleChat = (req, res) => {
         });
     } else if (text !== undefined) {
         const userText = text.trim().toLowerCase(); 
+        const userWords = userText.split(/\s+/); // Pecah kalimat user jadi per kata
 
         if (!userText) {
             return res.status(400).json({ status: 'error', message: 'Teks pertanyaan tidak boleh kosong.' });
@@ -48,10 +50,10 @@ const handleChat = (req, res) => {
             if (err) return res.status(500).json({ status: 'error', message: err.message });
             
             let jawabanDitemukan = null;
+            let maxMatchCount = 0;
 
             for (let i = 0; i < results.length; i++) {
                 const row = results[i];
-                
                 if (!row.keyword) continue;
                 
                 const keywordsArray = row.keyword
@@ -59,15 +61,32 @@ const handleChat = (req, res) => {
                     .map(k => k.trim().toLowerCase())
                     .filter(k => k.length > 0); 
                 
-                const isMatch = keywordsArray.some(keyword => userText.includes(keyword));
+                let matchCount = 0;
+
+                // 2. Logika baru: Cek kecocokan persis ATAU kemiripan kata (typo tolerance)
+                keywordsArray.forEach(keyword => {
+                    // Cek jika keyword berupa frasa panjang dan ada di dalam teks (cocok 100%)
+                    if (userText.includes(keyword)) {
+                        matchCount += 1.5; // Beri skor lebih tinggi kalau cocok persis
+                    } else {
+                        // Kalau tidak cocok persis, cek apakah ada kata dari user yang "mirip" karena typo
+                        userWords.forEach(word => {
+                            const similarity = stringSimilarity.compareTwoStrings(word, keyword);
+                            if (similarity > 0.7) { // 0.7 adalah batas toleransi kemiripan (70% mirip)
+                                matchCount += 1;
+                            }
+                        });
+                    }
+                });
                 
-                if (isMatch) {
+                if (matchCount > maxMatchCount) {
+                    maxMatchCount = matchCount;
                     jawabanDitemukan = row.jawaban;
-                    break;
                 }
             }
 
-            if (jawabanDitemukan) {
+            // Validasi: Pastikan ada minimal 1 keyword yang cocok sebelum mengirim respons sukses
+            if (jawabanDitemukan && maxMatchCount > 0) {
                 return res.json({ status: 'success', data: { jawaban: jawabanDitemukan } });
             } else {
                 return res.json({ 
