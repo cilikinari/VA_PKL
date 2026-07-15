@@ -1,7 +1,10 @@
 import React from 'react';
+import {useNavigate} from 'react-router-dom';
 import '../ui/HomeScreen.css';
 
 const HomeScreen = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="homescreen">
       {/* =========================================
@@ -26,7 +29,7 @@ const HomeScreen = () => {
             Layanan Virtual Assistant untuk membantu menjawab pertanyaan mengenai 
             layanan Statistik Pemerintahan Kota Denpasar secara otomatis.
           </p>
-          <button className="homescreen__btn-start">Mulai bertanya</button>
+          <button className="homescreen__btn-start" onClick={() => navigate ('/chat')}>Mulai bertanya</button>
         </div>
       </main>
 
@@ -91,7 +94,9 @@ const HomeScreen = () => {
             Dapatkan jawaban cepat untuk berbagai kebutuhan data dan panduan 
             layanan statistik sektoral Kota Denpasar tanpa harus menunggu lama.
           </p>
-          <button className="cta__btn">Mulai Chat Sekarang</button>
+          <button className="cta__btn" onClick={() => navigate('/chat')}>
+            Mulai Chat Sekarang
+          </button>
         </div>
       </section>
 
