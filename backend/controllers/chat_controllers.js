@@ -3,12 +3,9 @@ const stringSimilarity = require('string-similarity');
 
 // Menampilkan rekomendasi pertanyaan
 const getRecommendations = (req, res) => {
-    console.log("=> Yay! Endpoint /recommendations berhasil dipanggil!");
     const sql = 'SELECT id, pertanyaan FROM faq';
     
     db.query(sql, (err, results) => {
-        console.log("=> Query database selesai dijalankan!");
-
         if (err) {
             console.error('Error saat mengambil data FAQ:', err);
             return res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server' });
@@ -25,10 +22,10 @@ const getRecommendations = (req, res) => {
 const handleChat = (req, res) => {
     const { id, text } = req.body;
 
+    // SKENARIO A: Berdasarkan Tombol ID
     if (id) {
         const sqlById = 'SELECT jawaban FROM faq WHERE id = ?';
         db.query(sqlById, [id], (err, results) => {
-            console.log("=> Query database selesai dijalankan!");
             if (err) return res.status(500).json({ status: 'error', message: err.message });
             
             if (results.length > 0) {
@@ -36,13 +33,17 @@ const handleChat = (req, res) => {
             }
             return res.json({ status: 'not_found', data: { jawaban: "Maaf, data tidak ditemukan." } });
         });
-    } else if (text !== undefined) {
+    } 
+    // SKENARIO B: Berdasarkan Input Teks Manual (Dengan Toleransi Typo)
+    else if (text !== undefined) {
         const userText = text.trim().toLowerCase(); 
-        const userWords = userText.split(/\s+/); // Pecah kalimat user jadi per kata
-
+        
         if (!userText) {
             return res.status(400).json({ status: 'error', message: 'Teks pertanyaan tidak boleh kosong.' });
         }
+
+        // Pecah kalimat user menjadi array kata unik dan bersihkan dari kata kosong
+        const userWords = userText.split(/\s+/).filter(w => w.length > 0); 
 
         const sqlAll = 'SELECT jawaban, keyword FROM faq';
         
@@ -63,30 +64,32 @@ const handleChat = (req, res) => {
                 
                 let matchCount = 0;
 
-                // 2. Logika baru: Cek kecocokan persis ATAU kemiripan kata (typo tolerance)
                 keywordsArray.forEach(keyword => {
-                    // Cek jika keyword berupa frasa panjang dan ada di dalam teks (cocok 100%)
+                    // 1. Cek jika keyword (bisa berupa kata/frasa) ada di dalam teks input user (Cocok Persis)
                     if (userText.includes(keyword)) {
-                        matchCount += 1.5; // Beri skor lebih tinggi kalau cocok persis
-                    } else {
-                        // Kalau tidak cocok persis, cek apakah ada kata dari user yang "mirip" karena typo
+                        matchCount += 1.5; 
+                    } 
+                    // 2. Jika tidak cocok persis, cek kedekatan per kata (Toleransi Typo)
+                    else {
                         userWords.forEach(word => {
+                            // Hitung rasio kemiripan (0.0 - 1.0)
                             const similarity = stringSimilarity.compareTwoStrings(word, keyword);
-                            if (similarity > 0.7) { // 0.7 adalah batas toleransi kemiripan (70% mirip)
-                                matchCount += 1;
+                            if (similarity >= 0.75) { // Ditingkatkan sedikit ke 0.75 agar lebih presisi
+                                matchCount += 1.0;
                             }
                         });
                     }
                 });
                 
+                // Cari FAQ yang menghasilkan bobot skor tertinggi
                 if (matchCount > maxMatchCount) {
                     maxMatchCount = matchCount;
                     jawabanDitemukan = row.jawaban;
                 }
             }
 
-            // Validasi: Pastikan ada minimal 1 keyword yang cocok sebelum mengirim respons sukses
-            if (jawabanDitemukan && maxMatchCount > 1.5) {
+            // PENGUBAHAN VALIDASI: >= 1.0 agar kata typo yang mirip (skor 1) atau cocok persis (skor 1.5) tetap lolos
+            if (jawabanDitemukan && maxMatchCount >= 1.0) {
                 return res.json({ status: 'success', data: { jawaban: jawabanDitemukan } });
             } else {
                 return res.json({ 

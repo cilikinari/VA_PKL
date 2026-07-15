@@ -15,7 +15,7 @@ db.getConnection((err, connection) => {
         console.error('Yah, gagal konek ke database:', err);
         return;
     }
-    console.log('Yeay! Berhasil konek ke MySQL Laragon!');
+    console.log('Yeay! Berhasil konek ke MySQL Laragon pakai Pool!');
     connection.release();
 });
 
