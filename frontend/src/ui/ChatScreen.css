@@ -11,8 +11,19 @@
 .chat-header {
   padding: 16px 24px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.chat-header__top {
+  width: 100%;
+}
+
+.chat-header__main {
+  display: flex;
+  align-items: center;
 }
 
 .header-avatar {

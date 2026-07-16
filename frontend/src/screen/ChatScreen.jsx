@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "../ui/ChatScreen.css";
 import SendIcon from "@mui/icons-material/Send";
+import BackButton from "../widgets/BackButton";
 
 const ChatScreen = () => {
   const [messages, setMessages] = useState([]);
@@ -132,8 +133,13 @@ const ChatScreen = () => {
     <div className="chat-container">
       {/* HEADER */}
       <div className="chat-header">
-        <div className="header-avatar"></div>
-        <h2 className="header-title">Virtual Asisstant</h2>
+        <div className="chat-header__top">
+          <BackButton />
+        </div>
+        <div className="chat-header__main">
+          <div className="header-avatar"></div>
+          <h2 className="header-title">Virtual Asisstant</h2>
+        </div>
       </div>
 
       {/* AREA CHAT UTAMA */}
@@ -208,4 +214,4 @@ const ChatScreen = () => {
   );
 };
 
-export default ChatScreen;
+export default ChatScreen;  
