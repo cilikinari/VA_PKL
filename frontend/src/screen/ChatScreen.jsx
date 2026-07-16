@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import "../ui/ChatScreen.css"; // Import file CSS di sini
+import "../ui/ChatScreen.css";
 import SendIcon from "@mui/icons-material/Send";
 
 const ChatScreen = () => {
@@ -7,6 +7,9 @@ const ChatScreen = () => {
   const [inputText, setInputText] = useState("");
   const [quickQuestions, setQuickQuestions] = useState([]);
   const [showQuickChat, setShowQuickChat] = useState(false);
+
+  // STATE BARU: Untuk melacak status bot sedang mengetik
+  const [isTyping, setIsTyping] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -44,15 +47,65 @@ const ChatScreen = () => {
     }
   };
 
+  const fetchAnswerFromAPI = async (payload) => {
+    // 1. Munculkan animasi mengetik sebelum memanggil API
+    setIsTyping(true);
+
+    try {
+      // NOTE: Pastikan URL ini sesuai dengan route di backend kamu ya!
+      // Kalau sebelumnya '/api/faq/answer', ganti lagi ke situ.
+      const response = await fetch("http://localhost:3000/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      // 2. TAMBAHKAN SETTIMEOUT DI SINI (Simulasi Bot Mengetik selama 1.5 detik)
+      setTimeout(() => {
+        if (result.status === "success" || result.status === "not_found") {
+          const newBotMessage = {
+            id: Date.now(),
+            sender: "assistant",
+            text: result.data.jawaban,
+          };
+          setMessages((prev) => [...prev, newBotMessage]);
+        } else {
+          console.error("Gagal mendapatkan jawaban:", result.message);
+        }
+        
+        // 3. Matikan animasi mengetik SETELAH jeda waktu selesai
+        setIsTyping(false);
+      }, 1000); // 1500 milidetik = 1,5 detik
+
+    } catch (error) {
+      console.error("Gagal menghubungkan ke server API:", error);
+      
+      // Kasih jeda juga di bagian error agar tetap terlihat natural
+      setTimeout(() => {
+        const errorBotMessage = {
+          id: Date.now(),
+          sender: "assistant",
+          text: "Maaf, sistem sedang gangguan. Coba lagi nanti ya.",
+        };
+        setMessages((prev) => [...prev, errorBotMessage]);
+        
+        setIsTyping(false);
+      }, 1500);
+    }
+  };
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, showQuickChat]);
+  }, [messages, showQuickChat, isTyping]); // Tambahkan isTyping agar scroll ke bawah saat titik-titik muncul
 
-  const handleQuickChatClick = (questionText) => {
+  const handleQuickChatClick = (id, questionText) => {
     setShowQuickChat(false);
     const newUserMessage = {
       id: Date.now(),
@@ -60,19 +113,19 @@ const ChatScreen = () => {
       text: questionText,
     };
     setMessages((prev) => [...prev, newUserMessage]);
-
-    // TODO: Panggil API endpoint untuk mencari jawaban
+    fetchAnswerFromAPI({ id: id });
   };
 
   const handleSendManual = () => {
     if (inputText.trim() === "") return;
 
     setShowQuickChat(false);
-    const newUserMessage = { id: Date.now(), sender: "user", text: inputText };
+    const textToSend = inputText;
+    const newUserMessage = { id: Date.now(), sender: "user", text: textToSend };
     setMessages((prev) => [...prev, newUserMessage]);
     setInputText("");
 
-    // TODO: Panggil API endpoint untuk mencari jawaban
+    fetchAnswerFromAPI({ text: textToSend });
   };
 
   return (
@@ -99,15 +152,26 @@ const ChatScreen = () => {
           </div>
         ))}
 
+        {/* UI BARU: Indikator Typing (Muncul kalau isTyping === true) */}
+        {isTyping && (
+          <div className="message-row row-assistant">
+            <div className="message-bubble bubble-assistant typing-bubble">
+              <span className="dot"></span>
+              <span className="dot"></span>
+              <span className="dot"></span>
+            </div>
+          </div>
+        )}
+
         {/* Render Kotak Quick Chat (FAQ) */}
-        {showQuickChat && quickQuestions.length > 0 && (
+        {showQuickChat && quickQuestions.length > 0 && !isTyping && (
           <div className="quick-chat-container">
             <div className="quick-chat-box">
               {quickQuestions.map((q) => (
                 <button
                   key={q.id}
                   className="quick-chat-btn"
-                  onClick={() => handleQuickChatClick(q.pertanyaan)}
+                  onClick={() => handleQuickChatClick(q.id, q.pertanyaan)}
                 >
                   {q.pertanyaan}
                 </button>
@@ -129,11 +193,12 @@ const ChatScreen = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendManual()}
+            disabled={isTyping} // Matikan input saat bot sedang memproses
           />
           <button
             className="send-btn"
             onClick={handleSendManual}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() || isTyping} // Matikan tombol kirim saat memproses
           >
             <SendIcon />
           </button>

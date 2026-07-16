@@ -169,3 +169,42 @@
 .send-btn:hover:not(:disabled) {
   background-color: #1a237e;
 }
+
+/* --- ANIMASI TYPING BOT (LOADING DOTS) --- */
+.typing-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px; 
+  padding: 16px 20px !important;
+  min-width: 60px;
+  min-height: 24px;
+}
+
+.typing-bubble .dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ffffff; /* Warna putih biar kontras dengan biru */
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+/* Jeda staggered untuk efek gelombang */
+.typing-bubble .dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-bubble .dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typingBounce {
+  0%, 80%, 100% { 
+    transform: scale(0);
+    opacity: 0.3;
+  }
+  40% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
