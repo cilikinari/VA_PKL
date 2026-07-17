@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../ui/LoginPage.css";
+import BackButton from "../widgets/BackButton";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -53,6 +54,9 @@ const LoginPage = () => {
 
   return (
     <div className="login-page">
+      <div className="login-page__back-wrap">
+        <BackButton fallbackTo="/" label="Kembali" />
+      </div>
       <div className="login-page__card">
         <div className="login-page__header">
           <h1 className="login-page__title">Login</h1>
