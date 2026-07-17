@@ -2,7 +2,11 @@ const db = require("../config/database");
 const stringSimilarity = require("string-similarity");
 
 const greetingResponses = [
-  "Ada yang bisa saya bantu? Silakan bertanya terkait informasi yang anda butuhkan. Jika pertanyaan tidak bisa dijawab oleh saya, silakan hubungi admin terkait.",
+  "Ada yang bisa saya bantu? Silakan bertanya terkait informasi yang Anda butuhkan. Jika pertanyaan tidak bisa dijawab oleh saya, silakan hubungi admin terkait.",
+];
+
+const gratitudeResponses = [
+  "Sama-sama, senang bisa membantu. Jika ada pertanyaan lain, silakan bertanya kembali.",
 ];
 
 const isGreetingText = (text) => {
@@ -15,13 +19,32 @@ const isGreetingText = (text) => {
   const greetingPatterns = [
     /\bhalo\b/,
     /\bhai\b/,
-    /\bhello\b/,
+    /\bhafllo\b/,
     /\bhi\b/,
     /\bhey\b/,
     /\bselamat\s+(pagi|siang|sore|malam)\b/,
   ];
 
   return greetingPatterns.some((pattern) => pattern.test(normalizedText));
+};
+
+const isGratitudeText = (text) => {
+  const normalizedText = text
+    .toLowerCase()
+    .replace(/[^\w\s]/gi, " ")
+    .trim();
+  if (!normalizedText) return false;
+
+  const gratitudePatterns = [
+    /\bterima\s+kasih\b/,
+    /\bmakasih\b/,
+    /\bmakasih\s+banyak\b/,
+    /\bthanks\b/,
+    /\bthank\s+you\b/,
+    /\bthx\b/,
+  ];
+
+  return gratitudePatterns.some((pattern) => pattern.test(normalizedText));
 };
 
 // Menampilkan rekomendasi pertanyaan
@@ -76,18 +99,27 @@ const handleChat = (req, res) => {
     let userWords = userTextClean.split(/\s+/).filter((w) => w.length > 0);
 
     if (!userTextClean) {
-      return res
-        .status(400)
-        .json({
-          status: "error",
-          message: "Teks pertanyaan tidak boleh kosong.",
-        });
+      return res.status(400).json({
+        status: "error",
+        message: "Teks pertanyaan tidak boleh kosong.",
+      });
     }
 
     if (isGreetingText(text)) {
       const randomGreeting =
         greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
       return res.json({ status: "success", data: { jawaban: randomGreeting } });
+    }
+
+    if (isGratitudeText(text)) {
+      const randomGratitude =
+        gratitudeResponses[
+          Math.floor(Math.random() * gratitudeResponses.length)
+        ];
+      return res.json({
+        status: "success",
+        data: { jawaban: randomGratitude },
+      });
     }
 
     const sqlAll = "SELECT jawaban, keyword FROM faq";
