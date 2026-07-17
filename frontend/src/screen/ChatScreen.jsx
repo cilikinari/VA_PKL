@@ -23,10 +23,16 @@ const ChatScreen = () => {
           text: "Hi i'm your virtual asisstant, how can i help you today?",
         },
       ]);
-      fetchQuestionsFromAPI();
     }, 1000);
 
-    return () => clearTimeout(initTimer);
+    const questionsTimer = setTimeout(() => {
+      fetchQuestionsFromAPI();
+    }, 2200);
+
+    return () => {
+      clearTimeout(initTimer);
+      clearTimeout(questionsTimer);
+    };
   }, []);
 
   const fetchQuestionsFromAPI = async () => {
@@ -77,14 +83,13 @@ const ChatScreen = () => {
         } else {
           console.error("Gagal mendapatkan jawaban:", result.message);
         }
-        
+
         // 3. Matikan animasi mengetik SETELAH jeda waktu selesai
         setIsTyping(false);
       }, 1000); // 1500 milidetik = 1,5 detik
-
     } catch (error) {
       console.error("Gagal menghubungkan ke server API:", error);
-      
+
       // Kasih jeda juga di bagian error agar tetap terlihat natural
       setTimeout(() => {
         const errorBotMessage = {
@@ -93,7 +98,7 @@ const ChatScreen = () => {
           text: "Maaf, sistem sedang gangguan. Coba lagi nanti ya.",
         };
         setMessages((prev) => [...prev, errorBotMessage]);
-        
+
         setIsTyping(false);
       }, 1500);
     }
@@ -214,4 +219,4 @@ const ChatScreen = () => {
   );
 };
 
-export default ChatScreen;  
+export default ChatScreen;
