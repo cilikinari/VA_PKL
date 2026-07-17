@@ -34,72 +34,77 @@ const handleChat = (req, res) => {
             return res.json({ status: 'not_found', data: { jawaban: "Maaf, data tidak ditemukan." } });
         });
     } 
-    // SKENARIO B: Berdasarkan Input Teks Manual (Dengan Toleransi Typo)
+    // SKENARIO B: Fokus Murni Deteksi Typo
     else if (text !== undefined) {
-        const userText = text.trim().toLowerCase(); 
+        // 1. Bersihkan tanda baca dari input user
+        let userTextClean = text.toLowerCase().replace(/[^\w\s]/gi, '').trim(); 
+        let userWords = userTextClean.split(/\s+/).filter(w => w.length > 0); 
         
-        if (!userText) {
+        if (!userTextClean) {
             return res.status(400).json({ status: 'error', message: 'Teks pertanyaan tidak boleh kosong.' });
         }
 
-        // Pecah kalimat user menjadi array kata unik dan bersihkan dari kata kosong
-        const userWords = userText.split(/\s+/).filter(w => w.length > 0); 
-
         const sqlAll = 'SELECT jawaban, keyword FROM faq';
-        
-        db.query(sqlAll, (err, results) => {
+        db.query(sqlAll, (err, faqResults) => {
             if (err) return res.status(500).json({ status: 'error', message: err.message });
             
             let jawabanDitemukan = null;
             let maxMatchCount = 0;
 
-            for (let i = 0; i < results.length; i++) {
-                const row = results[i];
+            for (let i = 0; i < faqResults.length; i++) {
+                const row = faqResults[i];
                 if (!row.keyword) continue;
                 
-                const keywordsArray = row.keyword
-                    .split(',')
-                    .map(k => k.trim().toLowerCase())
-                    .filter(k => k.length > 0); 
-                
+                const keywordsArray = row.keyword.split(',').map(k => k.trim().toLowerCase()).filter(k => k.length > 0); 
                 let matchCount = 0;
 
                 keywordsArray.forEach(keyword => {
-                    // 1. Cek jika keyword (bisa berupa kata/frasa) ada di dalam teks input user (Cocok Persis)
-                    if (userText.includes(keyword)) {
-                        matchCount += 1.5; 
+                    // A. Cek Frasa Utuh 
+                    if (keyword.includes(' ') && userTextClean.includes(keyword)) {
+                        matchCount += 3; 
                     } 
-                    // 2. Jika tidak cocok persis, cek kedekatan per kata (Toleransi Typo)
-                    else {
+                    
+                    // B. Cek Per Kata (Toleransi Imbuhan & Typo)
+                    const singleKeywords = keyword.split(' ');
+                    singleKeywords.forEach(singleKey => {
                         userWords.forEach(word => {
-                            // Hitung rasio kemiripan (0.0 - 1.0)
-                            const similarity = stringSimilarity.compareTwoStrings(word, keyword);
-                            if (similarity >= 0.75) { // Ditingkatkan sedikit ke 0.75 agar lebih presisi
-                                matchCount += 1.0;
+                            // 1. Cocok persis
+                            if (word === singleKey) {
+                                matchCount += 2;
+                            } 
+                            // 2. Imbuhan
+                            else if (word.length >= 4 && singleKey.length >= 4 && (word.includes(singleKey) || singleKey.includes(word))) {
+                                matchCount += 1;
+                            } 
+                            // 3. Typo Detection (Sørensen–Dice Coefficient)
+                            else {
+                                const similarity = stringSimilarity.compareTwoStrings(word, singleKey);
+                                if (similarity >= 0.55) { 
+                                    // Skor dinamis: makin mirip, poin makin tinggi
+                                    matchCount += (similarity * 2); 
+                                }
                             }
                         });
-                    }
+                    });
                 });
                 
-                // Cari FAQ yang menghasilkan bobot skor tertinggi
+                // Cek siapa FAQ dengan skor tertinggi
                 if (matchCount > maxMatchCount) {
                     maxMatchCount = matchCount;
                     jawabanDitemukan = row.jawaban;
                 }
             }
 
-            // PENGUBAHAN VALIDASI: >= 1.0 agar kata typo yang mirip (skor 1) atau cocok persis (skor 1.5) tetap lolos
+            // Validasi sukses jika skor >= 1.0
             if (jawabanDitemukan && maxMatchCount >= 1.0) {
                 return res.json({ status: 'success', data: { jawaban: jawabanDitemukan } });
             } else {
                 return res.json({ 
                     status: 'not_found', 
-                    data: { jawaban: "Maaf, informasi yang Anda tanyakan belum tersedia. Silakan hubungi admin BPS atau Walidata terkait." } 
+                    data: { jawaban: "Maaf, informasi yang Anda tanyakan belum tersedia. Silakan hubungi admin terkait." } 
                 });
             }
         });
-    } else {
-        res.status(400).json({ status: 'error', message: 'Harap kirimkan id atau text pertanyaan.' });
     }
 };
 
