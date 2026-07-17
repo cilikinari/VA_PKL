@@ -162,17 +162,16 @@ const handleChat = (req, res) => {
               ) {
                 matchCount += 1;
               }
-              // 3. Typo Detection (Sørensen–Dice Coefficient)
+              // 3. Typo Detection
               else {
-                const similarity = stringSimilarity.compareTwoStrings(
-                  word,
-                  singleKey,
-                );
-                if (similarity >= 0.55) {
-                  // Skor dinamis: makin mirip, poin makin tinggi
-                  matchCount += similarity * 2;
+                    const similarity = stringSimilarity.compareTwoStrings(word, singleKey);
+                    
+                    const threshold = (singleKey.length <= 4) ? 0.80 : 0.55;
+                    
+                    if (similarity >= threshold) { 
+                        matchCount += (similarity * 2); 
+                    }
                 }
-              }
             });
           });
         });
