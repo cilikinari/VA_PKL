@@ -279,7 +279,7 @@ const FaqCrudWidget = () => {
     <>
       <section className="admin-panel__search-panel">
         <label className="admin-panel__search admin-panel__search--wide">
-          <span>Cari FAQ</span>
+          <h3>Cari FAQ</h3>
           <input
             type="search"
             placeholder="Cari pertanyaan, jawaban, atau keyword"
