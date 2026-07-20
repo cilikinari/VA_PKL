@@ -10,14 +10,14 @@ const AdminPanel = () => {
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     if (!token) {
-      navigate("/login");
+      navigate("/");
     }
   }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUsername");
-    navigate("/login");
+    navigate("/");
   };
 
   return (
