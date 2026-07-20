@@ -1,0 +1,172 @@
+.admin-panel__table-card--list {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.03)
+    ),
+    rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-panel__workspace--stacked {
+  grid-template-columns: 1fr;
+}
+
+.admin-panel__workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-panel__workspace-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #f5f7ff;
+}
+
+.admin-panel__table-card--list {
+  color: #f5f7ff;
+}
+
+.admin-panel__table-card--list {
+  color: #a9b8ff;
+}
+
+.admin-panel__table-wrap {
+  overflow: auto;
+  flex: 1;
+}
+
+.admin-panel__table-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-panel__table-card--list .admin-panel__table-tools {
+  padding: 14px 16px;
+  margin-top: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-panel__page-info {
+  color: rgba(245, 247, 255, 0.72);
+  font-size: 14px;
+}
+
+.admin-panel__page-size {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(245, 247, 255, 0.72);
+  font-size: 13px;
+}
+
+.admin-panel__page-size select {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f7ff;
+  padding: 10px 12px;
+}
+
+.admin-panel__table-box {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-panel__table {
+  min-width: 760px;
+  display: grid;
+  gap: 10px;
+}
+
+.admin-panel__table-row {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1.1fr) minmax(220px, 1.4fr) minmax(150px, 0.8fr)
+    180px;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(245, 247, 255, 0.9);
+  align-items: start;
+}
+
+.admin-panel__table-card--list
+  .admin-panel__table-row:not(.admin-panel__table-row--head) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-panel__table-card--list .admin-panel__table-row--head {
+  color: rgba(245, 247, 255, 0.72);
+}
+
+.admin-panel__table-row--head {
+  background: transparent;
+  color: rgba(245, 247, 255, 0.55);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-panel__cell {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.admin-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-panel__empty-state {
+  padding: 22px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(245, 247, 255, 0.72);
+}
+
+.admin-panel__table-card--list .admin-panel__pagination {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-panel__pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.admin-panel__pagination-button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f5f7ff;
+  cursor: pointer;
+}
+
+.admin-panel__pagination-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-panel__pagination-button--active {
+  background: rgba(207, 217, 255, 0.22);
+  border-color: rgba(207, 217, 255, 0.4);
+}
