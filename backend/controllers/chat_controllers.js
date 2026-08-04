@@ -135,7 +135,7 @@ const isGreetingText = (text) => {
   if (!normalizedText) return false;
 
   const greetingPatterns = [
-    /\bhalo\b/, /\bhai\b/, /\bhafllo\b/, /\bhi\b/, /\bhey\b/, /\bselamat\s+(pagi|siang|sore|malam)\b/,
+    /\bhalo\b/, /\bhai\b/, /\bhallo\b/, /\bhi\b/, /\bhey\b/, /\bselamat\s+(pagi|siang|sore|malam)\b/,
   ];
 
   return greetingPatterns.some((pattern) => pattern.test(normalizedText));
@@ -150,6 +150,24 @@ const isGratitudeText = (text) => {
   ];
 
   return gratitudePatterns.some((pattern) => pattern.test(normalizedText));
+};
+
+const acknowledgementResponses = [
+  "Baik, senang bisa membantu. Ada lagi yang bisa saya bantu?",
+];
+
+const isAcknowledgementText = (text) => {
+  const normalizedText = text.toLowerCase().replace(/[^\w\s]/gi, " ").trim();
+  if (!normalizedText) return false;
+
+  const ackPatterns = [
+    /^oke*\b/, /^ok\b/, /^sip\b/, /^siap\b/, /^y+a*\b/, /^gapapa\b/, /^tidak\s+ada\b/,
+    /^(ng?gak|ngga|enggak)\s*(ada|apa)?\b/, /\bsuksma\b/, /\bmakasi+h*\b/,
+  ];
+
+  // Kalimat pendek (<=4 kata) yang cocok pola basa-basi
+  const wordCount = normalizedText.split(/\s+/).length;
+  return wordCount <= 4 && ackPatterns.some((pattern) => pattern.test(normalizedText));
 };
 
 const getRecommendations = (req, res) => {
@@ -181,6 +199,22 @@ const handleChat = async (req, res) => {
       });
     });
   }
+
+  if (isGreetingText(text)) {
+  const randomGreeting = greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
+  return res.json({ status: "success", data: { jawaban: randomGreeting } });
+}
+
+if (isGratitudeText(text)) {
+  const randomGratitude = gratitudeResponses[Math.floor(Math.random() * gratitudeResponses.length)];
+  return res.json({ status: "success", data: { jawaban: randomGratitude } });
+}
+
+// TAMBAHAN BARU
+if (isAcknowledgementText(text)) {
+  const randomAck = acknowledgementResponses[Math.floor(Math.random() * acknowledgementResponses.length)];
+  return res.json({ status: "success", data: { jawaban: randomAck } });
+}
 
   // SKENARIO B: PENCARIAN AI (SEMANTIC SEARCH)
   else if (text !== undefined) {
