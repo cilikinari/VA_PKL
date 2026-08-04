@@ -95,11 +95,21 @@ Pertanyaan user: "${userQuestion}"
 Jawab singkat dan jelas:`;
 
     const result = await geminiModel.generateContent(prompt);
-    return result.response.text();
+    // Hapus sapaan pembuka yang mungkin ditambahkan model (Halo, Hallo, Hi, dll.)
+    const raw = result.response.text();
+    const cleaned = stripLeadingGreeting(raw);
+    return cleaned;
   } catch (err) {
     console.error("[Gemini] Gagal generate jawaban, fallback ke jawaban FAQ mentah:", err.message);
     return matchedFaq.jawaban;
   }
+};
+
+// Hapus sapaan di awal teks agar asisten tidak selalu menambahkan "Halo" di setiap jawaban
+const stripLeadingGreeting = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  // regex untuk menangani variasi sapaan di awal
+  return text.replace(/^\s*(halo|hallo|hai|hi|hey|hello)\b[\s!,:.-]*/i, '').trim();
 };
 
 // --- Fungsi bantu: cari FAQ paling mirip dari sebuah teks ---
@@ -187,6 +197,8 @@ const handleChat = async (req, res) => {
   // SKENARIO A: Berdasarkan Tombol ID
   if (id) {
     const sqlById = "SELECT jawaban FROM faq WHERE id = ?";
+    
+    // 1. Panggil db.query TANPA awalan 'return'
     db.query(sqlById, [id], (err, results) => {
       if (err) return res.status(500).json({ status: "error", message: err.message });
 
@@ -198,30 +210,18 @@ const handleChat = async (req, res) => {
         data: { jawaban: "Maaf, data tidak ditemukan." },
       });
     });
+
+    // 2. Tambahkan return di sini agar kode tidak bablas ke Skenario B!
+    return;
   }
 
-  if (isGreetingText(text)) {
-  const randomGreeting = greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
-  return res.json({ status: "success", data: { jawaban: randomGreeting } });
-}
-
-if (isGratitudeText(text)) {
-  const randomGratitude = gratitudeResponses[Math.floor(Math.random() * gratitudeResponses.length)];
-  return res.json({ status: "success", data: { jawaban: randomGratitude } });
-}
-
-// TAMBAHAN BARU
-if (isAcknowledgementText(text)) {
-  const randomAck = acknowledgementResponses[Math.floor(Math.random() * acknowledgementResponses.length)];
-  return res.json({ status: "success", data: { jawaban: randomAck } });
-}
-
   // SKENARIO B: PENCARIAN AI (SEMANTIC SEARCH)
-  else if (text !== undefined) {
+  if (text !== undefined) {
     if (!text.trim()) {
       return res.status(400).json({ status: "error", message: "Teks pertanyaan tidak boleh kosong." });
     }
 
+    // --- CEK BASA-BASI DULU (Cukup sekali saja di sini) ---
     if (isGreetingText(text)) {
       const randomGreeting = greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
       return res.json({ status: "success", data: { jawaban: randomGreeting } });
@@ -232,6 +232,12 @@ if (isAcknowledgementText(text)) {
       return res.json({ status: "success", data: { jawaban: randomGratitude } });
     }
 
+    if (isAcknowledgementText(text)) {
+      const randomAck = acknowledgementResponses[Math.floor(Math.random() * acknowledgementResponses.length)];
+      return res.json({ status: "success", data: { jawaban: randomAck } });
+    }
+
+    // --- JIKA BUKAN BASA-BASI, MASUK KE AI ---
     if (!extractor || faqCache.length === 0) {
       return res.status(503).json({
         status: "error",
@@ -242,18 +248,17 @@ if (isAcknowledgementText(text)) {
     const THRESHOLD = 0.55;
 
     try {
-      // 1. Coba cari match pakai teks ASLI dulu (hemat limit Gemini)
+      // 1. Coba cari match pakai teks ASLI dulu
       let { bestMatch, highestScore } = await findBestMatch(text);
       let queryUsedForAnswer = text;
       let wasNormalized = false;
 
-      // 2. Kalau nggak ketemu match yang cukup mirip, baru coba normalisasi pakai Gemini lalu cari ulang
+      // 2. Kalau nggak ketemu match yang cukup mirip, baru coba normalisasi pakai Gemini
       if (!bestMatch || highestScore < THRESHOLD) {
         const normalizedText = await normalizeWithGemini(text);
 
         if (normalizedText !== text) {
           const retryResult = await findBestMatch(normalizedText);
-          // Pakai hasil retry kalau lebih baik dari percobaan pertama
           if (retryResult.highestScore > highestScore) {
             bestMatch = retryResult.bestMatch;
             highestScore = retryResult.highestScore;
@@ -290,6 +295,9 @@ if (isAcknowledgementText(text)) {
       return res.status(500).json({ status: "error", message: "Gagal memproses AI." });
     }
   }
+
+  // Jika Request body tidak memiliki 'id' maupun 'text'
+  return res.status(400).json({ status: "error", message: "Format input tidak valid." });
 };
 
 module.exports = {
