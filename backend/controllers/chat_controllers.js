@@ -1,5 +1,126 @@
 const db = require("../config/database");
-const stringSimilarity = require("string-similarity");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+let pipeline;
+let extractor;
+let faqCache = [];
+
+// --- Setup Gemini (dipakai buat normalisasi teks & merapikan jawaban) ---
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-flash-lite-latest" });
+
+// Fungsi untuk menghitung kemiripan (Cosine Similarity)
+const cosineSimilarity = (vecA, vecB) => {
+  let dotProduct = 0.0;
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+  }
+  return dotProduct;
+};
+
+// Fungsi untuk mengambil data FAQ dari MySQL dan mengubahnya jadi Vektor (Embedding)
+const loadFaqToMemory = () => {
+  db.query("SELECT id, pertanyaan, jawaban FROM faq", async (err, results) => {
+    if (err) return console.error("Gagal load FAQ untuk AI:", err);
+
+    faqCache = [];
+    for (let row of results) {
+      try {
+        const output = await extractor(row.pertanyaan, { pooling: "mean", normalize: true });
+        const arr = output.data ?? output.embedding ?? output[0]?.data ?? output[0]?.embedding ?? output;
+        const vector = Array.from(arr);
+
+        faqCache.push({
+          id: row.id,
+          pertanyaan: row.pertanyaan,
+          jawaban: row.jawaban,
+          vector: vector,
+        });
+      } catch (error) {
+        console.error(`Gagal memproses embedding untuk FAQ ID ${row.id}`, error);
+      }
+    }
+    console.log(`[AI] Berhasil memproses ${faqCache.length} data FAQ ke dalam memori.`);
+  });
+};
+
+(async () => {
+  try {
+    const transformersModule = await import("@xenova/transformers");
+    const { pipeline } = transformersModule.default ?? transformersModule;
+
+    console.log("[AI] Memuat model AI Embedding (butuh beberapa detik)...");
+
+    extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    console.log("[AI] Model AI siap digunakan!");
+
+    loadFaqToMemory();
+  } catch (err) {
+    console.error("[AI] Gagal memuat model AI:", err);
+  }
+})();
+
+// --- Fungsi normalisasi kalimat user (perbaiki typo/singkatan) pakai Gemini ---
+const normalizeWithGemini = async (text) => {
+  try {
+    const prompt = `Perbaiki kalimat berikut menjadi Bahasa Indonesia yang baku dan jelas,
+tanpa mengubah maksud aslinya. Perbaiki typo dan singkatan (misal "gk" jadi "tidak", "gmn" jadi "bagaimana").
+Jawab HANYA dengan kalimat hasil perbaikan, tanpa tanda kutip, tanpa penjelasan apapun.
+
+Kalimat: "${text}"`;
+
+    const result = await geminiModel.generateContent(prompt);
+    const normalized = result.response.text().trim();
+
+    console.log(`[Gemini] Normalisasi: "${text}" -> "${normalized}"`);
+    return normalized || text;
+  } catch (err) {
+    console.error("[Gemini] Gagal normalisasi teks, pakai teks asli:", err.message);
+    return text; // fallback ke teks asli kalau Gemini gagal/limit habis
+  }
+};
+
+// --- Fungsi generate jawaban natural pakai Gemini (RAG generation step) ---
+const generateNaturalAnswer = async (userQuestion, matchedFaq) => {
+  try {
+    const prompt = `Kamu adalah asisten FAQ. Jawab pertanyaan user berdasarkan informasi berikut,
+dengan bahasa yang natural dan ramah. Jangan menambahkan informasi di luar konteks ini.
+Kalau user pakai bahasa gaul/typo, tetap pahami maksudnya.
+
+Pertanyaan referensi FAQ: "${matchedFaq.pertanyaan}"
+Jawaban referensi: "${matchedFaq.jawaban}"
+
+Pertanyaan user: "${userQuestion}"
+
+Jawab singkat dan jelas:`;
+
+    const result = await geminiModel.generateContent(prompt);
+    return result.response.text();
+  } catch (err) {
+    console.error("[Gemini] Gagal generate jawaban, fallback ke jawaban FAQ mentah:", err.message);
+    return matchedFaq.jawaban;
+  }
+};
+
+// --- Fungsi bantu: cari FAQ paling mirip dari sebuah teks ---
+const findBestMatch = async (text) => {
+  const userOutput = await extractor(text, { pooling: "mean", normalize: true });
+  const userArr = userOutput.data ?? userOutput.embedding ?? userOutput[0]?.data ?? userOutput[0]?.embedding ?? userOutput;
+  const userVector = Array.from(userArr);
+
+  let bestMatch = null;
+  let highestScore = -1;
+
+  for (let faq of faqCache) {
+    const score = cosineSimilarity(userVector, faq.vector);
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = faq;
+    }
+  }
+
+  return { bestMatch, highestScore };
+};
 
 const greetingResponses = [
   "Ada yang bisa saya bantu? Silakan bertanya terkait informasi yang Anda butuhkan. Jika pertanyaan tidak bisa dijawab oleh saya, silakan hubungi admin terkait.",
@@ -10,78 +131,49 @@ const gratitudeResponses = [
 ];
 
 const isGreetingText = (text) => {
-  const normalizedText = text
-    .toLowerCase()
-    .replace(/[^\w\s]/gi, " ")
-    .trim();
+  const normalizedText = text.toLowerCase().replace(/[^\w\s]/gi, " ").trim();
   if (!normalizedText) return false;
 
   const greetingPatterns = [
-    /\bhalo\b/,
-    /\bhai\b/,
-    /\bhafllo\b/,
-    /\bhi\b/,
-    /\bhey\b/,
-    /\bselamat\s+(pagi|siang|sore|malam)\b/,
+    /\bhalo\b/, /\bhai\b/, /\bhafllo\b/, /\bhi\b/, /\bhey\b/, /\bselamat\s+(pagi|siang|sore|malam)\b/,
   ];
 
   return greetingPatterns.some((pattern) => pattern.test(normalizedText));
 };
 
 const isGratitudeText = (text) => {
-  const normalizedText = text
-    .toLowerCase()
-    .replace(/[^\w\s]/gi, " ")
-    .trim();
+  const normalizedText = text.toLowerCase().replace(/[^\w\s]/gi, " ").trim();
   if (!normalizedText) return false;
 
   const gratitudePatterns = [
-    /\bterima\s+kasih\b/,
-    /\bmakasih\b/,
-    /\bmakasih\s+banyak\b/,
-    /\bthanks\b/,
-    /\bthank\s+you\b/,
-    /\bthx\b/,
+    /\bterima\s+kasih\b/, /\bmakasih\b/, /\bmakasih\s+banyak\b/, /\bthanks\b/, /\bthank\s+you\b/, /\bthx\b/,
   ];
 
   return gratitudePatterns.some((pattern) => pattern.test(normalizedText));
 };
 
-// Menampilkan rekomendasi pertanyaan
 const getRecommendations = (req, res) => {
   const sql = "SELECT id, pertanyaan FROM faq";
-
   db.query(sql, (err, results) => {
     if (err) {
       console.error("Error saat mengambil data FAQ:", err);
-      return res
-        .status(500)
-        .json({ status: "error", message: "Terjadi kesalahan pada server" });
+      return res.status(500).json({ status: "error", message: "Terjadi kesalahan pada server" });
     }
-
-    res.json({
-      status: "success",
-      data: results,
-    });
+    res.json({ status: "success", data: results });
   });
 };
 
-// Menangani input chat dari user
-const handleChat = (req, res) => {
+const handleChat = async (req, res) => {
   const { id, text } = req.body;
 
   // SKENARIO A: Berdasarkan Tombol ID
   if (id) {
     const sqlById = "SELECT jawaban FROM faq WHERE id = ?";
     db.query(sqlById, [id], (err, results) => {
-      if (err)
-        return res.status(500).json({ status: "error", message: err.message });
+      if (err) return res.status(500).json({ status: "error", message: err.message });
 
       if (results.length > 0) {
-        return res.json({
-          status: "success",
-          data: { jawaban: results[0].jawaban },
-        });
+        return res.json({ status: "success", data: { jawaban: results[0].jawaban } });
       }
       return res.json({
         status: "not_found",
@@ -89,120 +181,85 @@ const handleChat = (req, res) => {
       });
     });
   }
-  // SKENARIO B: Fokus Murni Deteksi Typo
-  else if (text !== undefined) {
-    // 1. Bersihkan tanda baca dari input user
-    let userTextClean = text
-      .toLowerCase()
-      .replace(/[^\w\s]/gi, "")
-      .trim();
-    let userWords = userTextClean.split(/\s+/).filter((w) => w.length > 0);
 
-    if (!userTextClean) {
-      return res.status(400).json({
-        status: "error",
-        message: "Teks pertanyaan tidak boleh kosong.",
-      });
+  // SKENARIO B: PENCARIAN AI (SEMANTIC SEARCH)
+  else if (text !== undefined) {
+    if (!text.trim()) {
+      return res.status(400).json({ status: "error", message: "Teks pertanyaan tidak boleh kosong." });
     }
 
     if (isGreetingText(text)) {
-      const randomGreeting =
-        greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
+      const randomGreeting = greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
       return res.json({ status: "success", data: { jawaban: randomGreeting } });
     }
 
     if (isGratitudeText(text)) {
-      const randomGratitude =
-        gratitudeResponses[
-          Math.floor(Math.random() * gratitudeResponses.length)
-        ];
-      return res.json({
-        status: "success",
-        data: { jawaban: randomGratitude },
+      const randomGratitude = gratitudeResponses[Math.floor(Math.random() * gratitudeResponses.length)];
+      return res.json({ status: "success", data: { jawaban: randomGratitude } });
+    }
+
+    if (!extractor || faqCache.length === 0) {
+      return res.status(503).json({
+        status: "error",
+        message: "Sistem AI sedang bersiap, mohon tunggu sebentar lalu coba lagi.",
       });
     }
 
-    const sqlAll = "SELECT jawaban, keyword FROM faq";
-    db.query(sqlAll, (err, faqResults) => {
-      if (err)
-        return res.status(500).json({ status: "error", message: err.message });
+    const THRESHOLD = 0.55;
 
-      let jawabanDitemukan = null;
-      let maxMatchCount = 0;
+    try {
+      // 1. Coba cari match pakai teks ASLI dulu (hemat limit Gemini)
+      let { bestMatch, highestScore } = await findBestMatch(text);
+      let queryUsedForAnswer = text;
+      let wasNormalized = false;
 
-      for (let i = 0; i < faqResults.length; i++) {
-        const row = faqResults[i];
-        if (!row.keyword) continue;
+      // 2. Kalau nggak ketemu match yang cukup mirip, baru coba normalisasi pakai Gemini lalu cari ulang
+      if (!bestMatch || highestScore < THRESHOLD) {
+        const normalizedText = await normalizeWithGemini(text);
 
-        const keywordsArray = row.keyword
-          .split(",")
-          .map((k) => k.trim().toLowerCase())
-          .filter((k) => k.length > 0);
-        let matchCount = 0;
-
-        keywordsArray.forEach((keyword) => {
-          // A. Cek Frasa Utuh
-          if (keyword.includes(" ") && userTextClean.includes(keyword)) {
-            matchCount += 3;
+        if (normalizedText !== text) {
+          const retryResult = await findBestMatch(normalizedText);
+          // Pakai hasil retry kalau lebih baik dari percobaan pertama
+          if (retryResult.highestScore > highestScore) {
+            bestMatch = retryResult.bestMatch;
+            highestScore = retryResult.highestScore;
+            queryUsedForAnswer = normalizedText;
+            wasNormalized = true;
           }
-
-          // B. Cek Per Kata (Toleransi Imbuhan & Typo)
-          const singleKeywords = keyword.split(" ");
-          singleKeywords.forEach((singleKey) => {
-            userWords.forEach((word) => {
-              // 1. Cocok persis
-              if (word === singleKey) {
-                matchCount += 2;
-              }
-              // 2. Imbuhan
-              else if (
-                word.length >= 4 &&
-                singleKey.length >= 4 &&
-                (word.includes(singleKey) || singleKey.includes(word))
-              ) {
-                matchCount += 1;
-              }
-              // 3. Typo Detection
-              else {
-                    const similarity = stringSimilarity.compareTwoStrings(word, singleKey);
-                    
-                    const threshold = (singleKey.length <= 4) ? 0.80 : 0.55;
-                    
-                    if (similarity >= threshold) { 
-                        matchCount += (similarity * 2); 
-                    }
-                }
-            });
-          });
-        });
-
-        // Cek siapa FAQ dengan skor tertinggi
-        if (matchCount > maxMatchCount) {
-          maxMatchCount = matchCount;
-          jawabanDitemukan = row.jawaban;
         }
       }
 
-      // Validasi sukses jika skor >= 1.0
-      if (jawabanDitemukan && maxMatchCount >= 1.0) {
+      // 3. Validasi akhir dengan Threshold
+      if (bestMatch && highestScore >= THRESHOLD) {
+        const naturalAnswer = await generateNaturalAnswer(queryUsedForAnswer, bestMatch);
+
         return res.json({
           status: "success",
-          data: { jawaban: jawabanDitemukan },
+          data: {
+            jawaban: naturalAnswer,
+            debug_score: highestScore,
+            debug_pertanyaan_mirip: bestMatch.pertanyaan,
+            debug_was_normalized: wasNormalized,
+            debug_query_used: queryUsedForAnswer,
+          },
         });
       } else {
         return res.json({
           status: "not_found",
           data: {
-            jawaban:
-              "Maaf, informasi yang Anda tanyakan belum tersedia. Silakan hubungi admin terkait.",
+            jawaban: "Maaf, informasi yang Anda tanyakan belum tersedia. Silakan hubungi admin terkait.",
           },
         });
       }
-    });
+    } catch (err) {
+      console.error("AI Evaluation Error:", err);
+      return res.status(500).json({ status: "error", message: "Gagal memproses AI." });
+    }
   }
 };
 
 module.exports = {
   getRecommendations,
   handleChat,
+  loadFaqToMemory,
 };

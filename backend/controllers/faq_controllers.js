@@ -1,4 +1,6 @@
 const db = require('../config/database');
+// 1. Import fungsi reload memori AI dari chat_controllers
+const { loadFaqToMemory } = require('./chat_controllers');
 
 // [READ] Ambil semua data FAQ
 const getAllFaq = (req, res) => {
@@ -20,6 +22,10 @@ const createFaq = (req, res) => {
     const sql = 'INSERT INTO faq (pertanyaan, jawaban, keyword) VALUES (?, ?, ?)';
     db.query(sql, [pertanyaan, jawaban, keyword], (err, results) => {
         if (err) return res.status(500).json({ status: 'error', message: err.message });
+        
+        // 2. Panggil fungsi ini agar AI langsung belajar data baru
+        loadFaqToMemory(); 
+        
         res.status(201).json({ status: 'success', message: 'Data FAQ berhasil ditambahkan!' });
     });
 };
@@ -29,7 +35,6 @@ const updateFaq = (req, res) => {
     const faqId = req.params.id;
     const { pertanyaan, jawaban, keyword } = req.body;
 
-    // Kumpulkan kolom mana saja yang mau di-update
     let updateFields = [];
     let queryValues = [];
 
@@ -46,14 +51,12 @@ const updateFaq = (req, res) => {
         queryValues.push(keyword);
     }
 
-    // Kalau admin nge-klik save tapi nggak ada data yang diubah
     if (updateFields.length === 0) {
         return res.status(400).json({ status: 'error', message: 'Tidak ada data yang dikirim untuk diubah!' });
     }
 
-    // Gabungkan query secara dinamis
     const sql = `UPDATE faq SET ${updateFields.join(', ')} WHERE id = ?`;
-    queryValues.push(faqId); // Masukkan ID ke urutan paling akhir untuk WHERE id = ?
+    queryValues.push(faqId); 
 
     db.query(sql, queryValues, (err, results) => {
         if (err) return res.status(500).json({ status: 'error', message: err.message });
@@ -61,6 +64,10 @@ const updateFaq = (req, res) => {
         if (results.affectedRows === 0) {
             return res.status(404).json({ status: 'error', message: 'Data FAQ tidak ditemukan!' });
         }
+
+        // 3. Panggil fungsi ini agar AI tahu ada perubahan data
+        loadFaqToMemory();
+
         res.json({ status: 'success', message: 'Data FAQ berhasil diperbarui!' });
     });
 };
@@ -76,6 +83,10 @@ const deleteFaq = (req, res) => {
         if (results.affectedRows === 0) {
             return res.status(404).json({ status: 'error', message: 'Data FAQ tidak ditemukan!' });
         }
+
+        // 4. Panggil fungsi ini agar AI menghapus data lama dari ingatannya
+        loadFaqToMemory();
+
         res.json({ status: 'success', message: 'Data FAQ berhasil dihapus!' });
     });
 };
