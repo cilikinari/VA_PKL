@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import "../ui/HomeScreen.css";
 import Typewriter from "typewriter-effect";
+import logo from "../assets/logo.png";
 
 const HomeScreen = () => {
   const navigate = useNavigate();
@@ -12,7 +13,14 @@ const HomeScreen = () => {
           HEADER / NAVBAR
       ========================================= */}
       <header className="homescreen__navbar">
-        <div className="homescreen__logo">Virtual Assistant</div>
+        <div className="homescreen__brand">
+          <img
+            className="homescreen__brand-logo"
+            src={logo}
+            alt="Virtual Assistant"
+          />
+          <div className="homescreen__logo">Virtual Assistant</div>
+        </div>
         <button
           className="homescreen__btn-login"
           onClick={() => navigate("/login")}

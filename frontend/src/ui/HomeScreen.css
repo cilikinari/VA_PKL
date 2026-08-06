@@ -7,7 +7,7 @@
   min-height: 100vh;
   background-color: #0f172a; /* Navy gelap */
   color: #ffffff;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 /* =========================================
@@ -25,10 +25,29 @@
   z-index: 50;
 }
 
+.homescreen__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.homescreen__brand-logo {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: transparent;
+  border: none;
+  outline: none;
+  flex: 0 0 auto;
+}
+
 .homescreen__logo {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .homescreen__btn-login {
@@ -79,7 +98,7 @@
 .homescreen__description {
   font-size: 16px;
   line-height: 1.6;
-  color: #94a3b8; 
+  color: #94a3b8;
   margin: 0;
 }
 
@@ -242,7 +261,11 @@
 ========================================= */
 .homescreen__cta {
   padding: 100px 64px;
-  background: linear-gradient(135deg, #475066 0%, #141e35 100%); /* Gradasi biru elegan */
+  background: linear-gradient(
+    135deg,
+    #475066 0%,
+    #141e35 100%
+  ); /* Gradasi biru elegan */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -445,5 +468,28 @@
     flex-direction: column;
     gap: 16px;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .homescreen__navbar {
+    padding: 18px 20px;
+  }
+
+  .homescreen__brand {
+    gap: 10px;
+  }
+
+  .homescreen__brand-logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .homescreen__logo {
+    font-size: 16px;
+  }
+
+  .homescreen__btn-login {
+    padding: 8px 18px;
   }
 }
