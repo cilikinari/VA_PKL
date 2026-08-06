@@ -1,6 +1,8 @@
 .admin-panel {
   min-height: 100vh;
   padding: 28px;
+  width: 100%;
+  max-width: 100vw;
   color: #f5f7ff;
   font-family: "Inter", sans-serif;
   position: relative;
@@ -409,6 +411,10 @@
   }
 
   .admin-panel__topbar-actions {
+    width: 100%;
+  }
+
+  .admin-panel__logout {
     width: 100%;
   }
 

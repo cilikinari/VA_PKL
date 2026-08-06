@@ -397,13 +397,7 @@ const FaqCrudWidget = () => {
                   </div>
 
                   {/* Kelompokkan dropdown dan tombol agar rapi sejajar di sebelah kanan */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "24px",
-                    }}
-                  >
+                  <div className="admin-panel__table-controls">
                     <label className="admin-panel__page-size">
                       <span>Rows per page</span>
                       <select

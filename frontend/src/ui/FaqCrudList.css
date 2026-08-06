@@ -39,7 +39,10 @@
 }
 
 .admin-panel__table-wrap {
-  overflow: auto;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   flex: 1;
 }
 
@@ -89,6 +92,14 @@
   min-width: 760px;
   display: grid;
   gap: 10px;
+}
+
+.admin-panel__table-controls {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .admin-panel__table-row {
@@ -169,4 +180,44 @@
 .admin-panel__pagination-button--active {
   background: rgba(207, 217, 255, 0.22);
   border-color: rgba(207, 217, 255, 0.4);
+}
+
+@media (max-width: 900px) {
+  .admin-panel__workspace-header {
+    flex-wrap: wrap;
+    padding: 18px;
+  }
+
+  .admin-panel__table {
+    min-width: 0;
+  }
+
+  .admin-panel__table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-panel__table-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-panel__workspace-header {
+    padding: 16px;
+  }
+
+  .admin-panel__table-tools,
+  .admin-panel__table-controls,
+  .admin-panel__page-size {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .admin-panel__pagination-pages {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
