@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "../ui/HomeScreen.css";
+import Typewriter from "typewriter-effect";
 
 const HomeScreen = () => {
   const navigate = useNavigate();
@@ -26,9 +27,13 @@ const HomeScreen = () => {
       <main className="homescreen__hero">
         <div className="homescreen__content">
           <h1 className="homescreen__title">
-            Your Friendly <br />
-            Virtual <br />
-            Asisstant
+            <Typewriter
+              options={{
+                strings: ["Your Friendly Virtual Assistant"],
+                autoStart: true,
+                loop: true,
+              }}
+            />
           </h1>
           <p className="homescreen__description">
             Layanan Virtual Assistant untuk membantu menjawab pertanyaan
